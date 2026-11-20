@@ -14,6 +14,8 @@ import Profil from "@/pages/profil";
 import Admin from "@/pages/admin";
 import Reyting from "@/pages/reyting";
 import PublicProfile from "@/pages/foydalanuvchi";
+import Yordam from "@/pages/yordam";
+import Murojaat from "@/pages/murojaat";
 import { ensureSeedAdmins } from "@/lib/auth";
 
 function NotFound() {
@@ -49,6 +51,8 @@ ensureSeedAdmins().catch(console.error).finally(() => createRoot(document.getEle
         <Route path="/admin" element={<Admin />} />
         <Route path="/reyting" element={<Reyting />} />
         <Route path="/u/:id" element={<PublicProfile />} />
+        <Route path="/yordam" element={<Yordam />} />
+        <Route path="/yordam/:id" element={<Murojaat />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
       <Toaster />

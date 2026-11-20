@@ -77,6 +77,7 @@ export default function Index() {
       </section>
       <footer className="border-t py-8 text-center text-sm text-muted-foreground">
         <div className="mb-3 flex justify-center"><TelegramButton variant="icon" /></div>
+        <div className="mb-2 flex justify-center gap-4"><Link to="/yordam" className="hover:text-primary">Yordam va FAQ</Link><Link to="/yordam#murojaat" className="hover:text-primary">Adminga murojaat</Link></div>
         © 2026 Daywork.uz · Foydalanish yoshi 18–40
       </footer>
     </div>

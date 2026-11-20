@@ -1,5 +1,5 @@
 import { useHead } from "@/lib/head";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { AlertTriangle, ExternalLink, KeyRound, Loader2, LogOut, ShieldCheck } from "lucide-react";
@@ -7,6 +7,7 @@ import { AppHeader } from "@/components/mardikor/AppHeader";
 import { PasswordInput, PasswordRules } from "@/components/mardikor/PasswordField";
 import { RatingLabel } from "@/components/mardikor/Stars";
 import { TelegramButton } from "@/components/mardikor/TelegramButton";
+import { FaqManager } from "@/components/mardikor/FaqManager";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,6 +20,8 @@ import { statsFor } from "@/lib/reviews";
 export default function Profil() {
   useHead("Profil va xavfsizlik — Daywork.uz", "Shaxsiy ma’lumotlar va parolni o‘zgartirish.");
   const nav = useNavigate();
+  const loc = useLocation();
+  const prefill = (loc.state as { faqPrefill?: { question: string; answer: string } } | null)?.faqPrefill;
   const [p, setP] = useState<User | null>(null);
   const [name, setName] = useState("");
   const [region, setRegion] = useState("");
@@ -33,6 +36,9 @@ export default function Profil() {
     if (!x) { nav("/kirish"); return; }
     setP(x); setName(x.name); setRegion(x.region); setDistrict(x.district);
   }, [nav]);
+  useEffect(() => {
+    if (p && loc.hash === "#faq") setTimeout(() => document.getElementById("faq")?.scrollIntoView({ behavior: "smooth" }), 50);
+  }, [p, loc.hash]);
   if (!p) return null;
 
   const infoChanged = name.trim() !== p.name || region !== p.region || district !== p.district;
@@ -114,6 +120,8 @@ export default function Profil() {
             <Button type="submit" disabled={!pwOk || busy}>{busy && <Loader2 className="animate-spin" />}Parolni yangilash</Button>
           </form>
         </section>
+
+        {p.role === "admin" && !p.mustChangePw && <FaqManager admin={p} prefill={prefill} />}
 
         <section className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border bg-card p-6">
           <div>

@@ -2,7 +2,7 @@ import { useHead } from "@/lib/head";
 import { Link, useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Ban, Eye, EyeOff, KeyRound, Search, ShieldCheck, ShieldOff, Unlock, Users, Flag, MessageSquare, Briefcase } from "lucide-react";
+import { Ban, Eye, EyeOff, KeyRound, Search, ShieldCheck, ShieldOff, Unlock, Users, Flag, MessageSquare, Briefcase, LifeBuoy, BookOpen } from "lucide-react";
 import { AppHeader } from "@/components/mardikor/AppHeader";
 import { RatingLabel, Stars } from "@/components/mardikor/Stars";
 import { fmtDate } from "@/components/mardikor/ReviewList";
@@ -15,6 +15,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { store, users, type User } from "@/lib/mardikor";
 import { adminResetPassword } from "@/lib/auth";
 import { complaintStore, reviewStore, statsFor, type Complaint, type ComplaintStatus } from "@/lib/reviews";
+import { tickets as ticketStore, faq, type TicketStatus } from "@/lib/support";
+import { TicketStatusBadge } from "@/components/mardikor/TicketStatusBadge";
 
 const STATUS: Record<ComplaintStatus, { t: string; cls: string }> = {
   new: { t: "Yangi", cls: "bg-accent text-accent-foreground hover:bg-accent" },
@@ -46,6 +48,9 @@ export default function Admin() {
   const all = useMemo(() => users.all(), [tick]);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const complaints = useMemo(() => complaintStore.all(), [tick]);
+  const [tFilter, setTFilter] = useState<TicketStatus | "all" | "mine">("open");
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const tix = useMemo(() => ticketStore.all(), [tick]);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const reviews = useMemo(() => reviewStore.allForAdmin().sort((a, b) => b.at - a.at), [tick]);
   if (!me) return null;
@@ -84,6 +89,8 @@ export default function Admin() {
     { i: Briefcase, t: "Zayavkalar", v: jobs.length, d: `${acc.filter((a) => a.status === "done").length} ta ish yakunlangan` },
     { i: MessageSquare, t: "Izohlar", v: reviews.length, d: `${reviews.filter((r) => r.hidden).length} ta yashirilgan` },
     { i: Flag, t: "Shikoyatlar", v: complaints.length, d: `${complaints.filter((c) => c.status === "new").length} ta yangi` },
+    { i: LifeBuoy, t: "Murojaatlar", v: tix.length, d: `${tix.filter((x) => x.status === "open").length} ta javob kutmoqda` },
+    { i: BookOpen, t: "FAQ", v: faq.all().length, d: `${faq.published().length} ta ulashilgan` },
   ];
 
   return (
@@ -98,7 +105,7 @@ export default function Admin() {
           <p className="text-sm text-muted-foreground">Kirgan: <b className="text-foreground">{me.name}</b> · {me.id}</p>
         </div>
 
-        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {stat.map(({ i: I, t, v, d }) => (
             <div key={t} className="rounded-2xl border bg-card p-5">
               <I className="h-5 w-5 text-primary" />
@@ -109,13 +116,43 @@ export default function Admin() {
           ))}
         </div>
 
-        <Tabs defaultValue="complaints" className="mt-8">
+        <Tabs defaultValue="support" className="mt-8">
           <TabsList className="flex-wrap">
+            <TabsTrigger value="support">Murojaatlar ({tix.filter((x) => x.status === "open").length})</TabsTrigger>
             <TabsTrigger value="complaints">Shikoyatlar ({complaints.filter((c) => c.status === "new").length})</TabsTrigger>
             <TabsTrigger value="users">Foydalanuvchilar ({all.length})</TabsTrigger>
             <TabsTrigger value="admins">Adminlar ({admins.length})</TabsTrigger>
             <TabsTrigger value="reviews">Izohlar ({reviews.length})</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="support" className="mt-4 space-y-3">
+            <div className="flex flex-wrap items-center gap-2">
+              {(["open", "answered", "closed", "mine", "all"] as const).map((f) => (
+                <Button key={f} size="sm" variant={tFilter === f ? "default" : "secondary"} onClick={() => setTFilter(f)}>
+                  {{ open: "Javob kutmoqda", answered: "Javob berilgan", closed: "Yopilgan", mine: "Menga biriktirilgan", all: "Barchasi" }[f]}
+                </Button>
+              ))}
+              <Link to="/profil#faq" className="ml-auto inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"><BookOpen className="h-4 w-4" />FAQ boshqaruvi</Link>
+            </div>
+            {(() => {
+              const tl = tix.filter((x) => tFilter === "all" || (tFilter === "mine" ? x.assignedTo === me.id : x.status === tFilter));
+              if (!tl.length) return <p className="py-10 text-center text-muted-foreground">Murojaatlar yo‘q.</p>;
+              return (
+                <div className="divide-y rounded-2xl border bg-card">
+                  {tl.map((x) => (
+                    <Link key={x.id} to={`/yordam/${x.id}`} className="flex flex-wrap items-center gap-3 p-4 transition hover:bg-muted/50">
+                      {x.unreadAdmin && x.status !== "closed" && <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-accent" aria-label="Yangi" />}
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate font-semibold">#{x.number} · {x.subject}</div>
+                        <div className="text-xs text-muted-foreground">{x.userName} · {x.category} · {x.messages.length} xabar · {fmtDate(x.updatedAt)}{x.assignedName ? ` · Mas’ul: ${x.assignedName}` : ""}</div>
+                      </div>
+                      <TicketStatusBadge status={x.status} />
+                    </Link>
+                  ))}
+                </div>
+              );
+            })()}
+          </TabsContent>
 
           <TabsContent value="complaints" className="mt-4 space-y-3">
             <div className="flex flex-wrap gap-2">

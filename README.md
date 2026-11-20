@@ -25,6 +25,8 @@ Production build: `npm run build` → `dist/` (SPA: hostingda barcha yo‘llarni
 | `/balans` | Balans, to‘ldirish (demo), referal |
 | `/reyting` | Ochiq reyting va so‘nggi izohlar |
 | `/u/:id` | Foydalanuvchining ommaviy profili |
+| `/yordam` | Yordam markazi: FAQ (qidiruv, bo‘limlar) va adminga murojaat |
+| `/yordam/:id` | Murojaat yozishmasi (muallif va adminlar uchun) |
 | `/admin` | Admin panel (faqat adminlar) |
 
 ## Demo hisoblar
@@ -46,6 +48,17 @@ SMS kod (demo): `1234`.
 - **Muhim:** bu hali backendsiz prototip. Barcha ma’lumotlar (hisoblar, xeshlar, rollar) brauzerning `localStorage`ida turadi —
   brauzerga kira oladigan odam ularni o‘zgartirishi mumkin (masalan, o‘zini admin qilib qo‘yishi). Haqiqiy foydalanish uchun
   hisoblar, parol tekshiruvi, rollar va urinishlar cheklovi serverga ko‘chirilishi kerak.
+
+## Support tizimi va FAQ
+
+- **Murojaat:** tizimga kirgan foydalanuvchi bo‘lim, mavzu va xabar bilan adminga yozadi (bir vaqtda ko‘pi bilan 3 ta ochiq murojaat).
+  Admin javobi kelganda sarlavhadagi “Yordam” belgisida son chiqadi. Foydalanuvchi javob yozishi yoki murojaatni yopishi mumkin.
+- **Admin:** Admin panel → “Murojaatlar”: filtrlar (javob kutmoqda / javob berilgan / yopilgan / menga biriktirilgan),
+  javob berish, o‘ziga biriktirish, yopish va qayta ochish. Yangi murojaatlar sarlavhadagi “Admin” belgisida ko‘rinadi.
+- **FAQ:** admin o‘z profilida (`/profil#faq`) savol-javob yaratadi. Yangi savol avval **qoralama** bo‘ladi,
+  “Tizimga ulashish” bosilgach `/yordam` da hammaga ko‘rinadi. Tahrirlash, tartibini o‘zgartirish, ulashishni bekor qilish,
+  o‘chirish va savol havolasini (`/yordam#<id>`) nusxalash mumkin. Murojaat sahifasidagi “FAQ’ga aylantirish” tugmasi
+  shu yozishmadan tayyor qoralama ochadi.
 
 ## Telegram bot
 

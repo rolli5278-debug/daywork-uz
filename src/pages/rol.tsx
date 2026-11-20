@@ -1,7 +1,7 @@
 import { useHead } from "@/lib/head";
 import { Link, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { Briefcase, HardHat, LogOut, Settings, ShieldCheck, Trophy } from "lucide-react";
+import { Briefcase, HardHat, LifeBuoy, LogOut, Settings, ShieldCheck, Trophy } from "lucide-react";
 import { AppHeader } from "@/components/mardikor/AppHeader";
 import { Button } from "@/components/ui/button";
 import { formatSum, store, type User } from "@/lib/mardikor";
@@ -45,6 +45,7 @@ export default function Rol() {
         <div className="mt-8 flex flex-wrap gap-2">
           <Button asChild variant="secondary"><Link to="/profil"><Settings /> Profil va parol</Link></Button>
           <Button asChild variant="secondary"><Link to="/reyting"><Trophy /> Reyting</Link></Button>
+          <Button asChild variant="secondary"><Link to="/yordam"><LifeBuoy /> Yordam / murojaat</Link></Button>
           {p.role === "admin" && <Button asChild variant="secondary"><Link to="/admin"><ShieldCheck /> Admin panel</Link></Button>}
           <Button variant="ghost" onClick={() => { store.logout(); nav("/"); }}><LogOut /> Chiqish</Button>
         </div>
