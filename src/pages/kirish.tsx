@@ -12,14 +12,15 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { DEMO_SMS_CODE, REGIONS, isAllowedAge, isValidUzPhone } from "@/lib/mardikor";
+import { REGIONS, isAllowedAge, isValidUzPhone } from "@/lib/mardikor";
 import { login, passwordIssues, phoneTaken, register, resetPassword } from "@/lib/auth";
+import { sendOtp, verifyOtp } from "@/lib/telegram-otp";
 import { cn } from "@/lib/utils";
 
 type Mode = "login" | "register" | "reset";
-type Step = "phone" | "code" | "age" | "profile" | "password";
-const REG_STEPS: Step[] = ["phone", "code", "age", "profile", "password"];
-const RESET_STEPS: Step[] = ["phone", "code", "password"];
+type Step = "phone" | "telegram" | "code" | "age" | "profile" | "password";
+const REG_STEPS: Step[] = ["phone", "telegram", "code", "age", "profile", "password"];
+const RESET_STEPS: Step[] = ["phone", "telegram", "code", "password"];
 
 function PhoneInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   return (
@@ -40,7 +41,7 @@ export default function Kirish() {
   const [password, setPassword] = useState("");
   const [password2, setPassword2] = useState("");
   const [code, setCode] = useState("");
-  const [tries, setTries] = useState(0);
+  const [codeLocked, setCodeLocked] = useState(false);
   const [wait, setWait] = useState(0);
   const [birth, setBirth] = useState("");
   const [ageOk, setAgeOk] = useState(false);
@@ -55,7 +56,7 @@ export default function Kirish() {
     return () => clearTimeout(t);
   }, [wait]);
 
-  const switchMode = (m: Mode) => { setMode(m); setStep("phone"); setPassword(""); setPassword2(""); setCode(""); setTries(0); };
+  const switchMode = (m: Mode) => { setMode(m); setStep("phone"); setPassword(""); setPassword2(""); setCode(""); setCodeLocked(false); };
 
   const afterLogin = (u: { name: string; id: string; mustChangePw?: boolean; role: string }) => {
     if (u.mustChangePw) { toast.warning("Xavfsizlik uchun vaqtinchalik parolni o‘zgartiring."); nav("/profil"); return; }
@@ -71,15 +72,31 @@ export default function Kirish() {
     afterLogin(r.user);
   };
 
-  const sendCode = () => {
+  const sendCode = async () => {
     if (mode === "register" && phoneTaken(phone)) { toast.error("Bu raqam allaqachon ro‘yxatdan o‘tgan. Kirish bo‘limidan foydalaning."); return; }
     if (mode === "reset" && !phoneTaken(phone)) { toast.error("Bu raqam ro‘yxatdan o‘tmagan."); return; }
-    setStep("code"); setWait(60); toast(`Demo: SMS kod — ${DEMO_SMS_CODE}`);
+    setBusy(true);
+    const r = await sendOtp(phone);
+    setBusy(false);
+    if (!r.ok && r.error === "not_linked") { setStep("telegram"); return; }
+    if (!r.ok && r.error === "rate_limited") { toast.error("Kod yaqinda yuborilgan edi. Bir oz kutib, qayta urinib ko‘ring."); return; }
+    if (!r.ok) { toast.error("Kod yuborishda xatolik. Internetni tekshirib, qayta urinib ko‘ring."); return; }
+    setCode(""); setCodeLocked(false); setStep("code"); setWait(60);
+    toast.success("Tasdiqlash kodi Telegramga yuborildi.");
   };
-  const checkCode = () => {
-    if (code === DEMO_SMS_CODE) { setStep(mode === "reset" ? "password" : "age"); return; }
-    const n = tries + 1; setTries(n); setCode("");
-    toast.error(n >= 3 ? "3 marta xato. 15 daqiqaga bloklandi." : `Kod xato. Qolgan urinish: ${3 - n}`);
+  const afterTelegramConnect = () => {
+    setCode(""); setCodeLocked(false); setStep("code"); setWait(60);
+    toast.success("Kod Telegramga yuborildi — botdan tekshiring.");
+  };
+  const checkCode = async () => {
+    setBusy(true);
+    const r = await verifyOtp(phone, code);
+    setBusy(false);
+    if (r.ok) { setStep(mode === "reset" ? "password" : "age"); return; }
+    setCode("");
+    if (r.error === "too_many_attempts") { setCodeLocked(true); toast.error("Ko‘p marta xato. Yangi kod so‘rang."); return; }
+    if (r.error === "expired") { toast.error("Kod muddati tugagan. Qaytadan yuboring."); return; }
+    toast.error(r.attemptsLeft != null ? `Kod xato. Qolgan urinish: ${r.attemptsLeft}` : "Kod xato.");
   };
   const checkAge = () => {
     if (!isAllowedAge(new Date(birth))) { toast.error("Platformadan faqat 18–40 yoshdagilar foydalana oladi."); return; }
@@ -146,21 +163,36 @@ export default function Kirish() {
           {mode !== "login" && step === "phone" && (
             <div className="space-y-5">
               <h1 className="text-2xl font-bold">{mode === "reset" ? "Parolni tiklash" : "Telefon raqamingiz"}</h1>
-              {mode === "reset" && <p className="text-sm text-muted-foreground">Ro‘yxatdan o‘tgan raqamingizga tasdiqlash kodi yuboramiz.</p>}
+              {mode === "reset" && <p className="text-sm text-muted-foreground">Ro‘yxatdan o‘tgan raqamingizga Telegram orqali tasdiqlash kodi yuboramiz.</p>}
               <PhoneInput value={phone} onChange={setPhone} />
-              <Button className="w-full" size="lg" disabled={!isValidUzPhone(phone)} onClick={sendCode}>Kod yuborish</Button>
+              <Button className="w-full" size="lg" disabled={!isValidUzPhone(phone) || busy} onClick={sendCode}>
+                {busy && <Loader2 className="animate-spin" />} Kod yuborish
+              </Button>
               {mode === "reset" && <Button variant="ghost" className="w-full" onClick={() => switchMode("login")}>Kirishga qaytish</Button>}
+            </div>
+          )}
+          {step === "telegram" && (
+            <div className="space-y-5">
+              <h1 className="text-2xl font-bold">Telegram orqali tasdiqlash</h1>
+              <p className="text-sm text-muted-foreground">
+                +998 {phone} raqamini birinchi marta tasdiqlayapsiz. Pastdagi tugma orqali botni oching va telefon raqamingizni yuboring — kod avtomatik ravishda botga keladi.
+              </p>
+              <TelegramButton start="verify" />
+              <Button className="w-full" size="lg" onClick={afterTelegramConnect}>Ulandim, davom etish</Button>
+              <Button variant="ghost" className="w-full" onClick={() => setStep("phone")}>Orqaga</Button>
             </div>
           )}
           {step === "code" && (
             <div className="space-y-5">
-              <h1 className="text-2xl font-bold">SMS kodni kiriting</h1>
-              <p className="text-sm text-muted-foreground">+998 {phone} raqamiga 4 xonali kod yuborildi. Kod 5 daqiqa amal qiladi.</p>
-              <InputOTP maxLength={4} value={code} onChange={setCode} disabled={tries >= 3}>
+              <h1 className="text-2xl font-bold">Telegramdan kelgan kodni kiriting</h1>
+              <p className="text-sm text-muted-foreground">+998 {phone} raqamiga ulangan Telegram botiga 4 xonali kod yuborildi. Kod 5 daqiqa amal qiladi.</p>
+              <InputOTP maxLength={4} value={code} onChange={setCode} disabled={codeLocked}>
                 <InputOTPGroup>{[0, 1, 2, 3].map((i) => <InputOTPSlot key={i} index={i} className="h-14 w-14 text-xl" />)}</InputOTPGroup>
               </InputOTP>
-              <Button className="w-full" size="lg" disabled={code.length < 4 || tries >= 3} onClick={checkCode}>Tasdiqlash</Button>
-              <Button variant="ghost" className="w-full" disabled={wait > 0} onClick={sendCode}>
+              <Button className="w-full" size="lg" disabled={code.length < 4 || codeLocked || busy} onClick={checkCode}>
+                {busy && <Loader2 className="animate-spin" />} Tasdiqlash
+              </Button>
+              <Button variant="ghost" className="w-full" disabled={wait > 0 || busy} onClick={sendCode}>
                 {wait > 0 ? `Qayta yuborish (${wait} s)` : "Kodni qayta yuborish"}
               </Button>
             </div>
@@ -207,7 +239,6 @@ export default function Kirish() {
             </form>
           )}
         </div>
-        <p className="mt-4 text-center text-xs text-muted-foreground">Demo rejim: SMS hali ulanmagan, kod — {DEMO_SMS_CODE}</p>
         <div className="mt-6 flex flex-col items-center gap-2">
           <TelegramButton start="login" />
           <Link to="/" className="text-xs text-muted-foreground hover:underline">Bosh sahifaga qaytish</Link>
