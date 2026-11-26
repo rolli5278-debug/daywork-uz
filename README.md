@@ -80,9 +80,8 @@ haqiqiy backend talab qiladi, shuning uchun bu qism (localStorage'dan farqli o�
    - `TELEGRAM_WEBHOOK_SECRET` — tasodifiy maxfiy satr (botdan kelgan so‘rovlarni tasdiqlash uchun)
 2. `telegram-webhook` funksiyasining URL'ini `?key=<TELEGRAM_WEBHOOK_SECRET>` bilan bir marta brauzerda oching —
    shu orqali Telegram'ga "yangilanishlarni shu yerga yubor" deb aytiladi.
-3. Hostingda (Vercel/Lovable) `.env` ga qo‘shing:
-   ```
-   VITE_TELEGRAM_BOT=DayWork_notify_bot
-   ```
-   Shunda barcha "Telegram botga o‘tish" tugmalari `https://t.me/DayWork_notify_bot` ga olib boradi. Bu qadam
-   bajarilmaguncha tugmalar demo oynani ko‘rsatadi.
+3. Hosting (Netlify): qo'shimcha sozlash shart emas. `netlify.toml` build buyrug'i, `dist` papkasi,
+   `VITE_TELEGRAM_BOT` va SPA yo'naltirishni o'zi belgilaydi. Bot nomi kodda ham standart qiymat sifatida
+   yozilgan (`src/lib/telegram.ts`), shuning uchun "Telegram botga o'tish" tugmalari doim
+   `https://t.me/DayWork_notify_bot` ga olib boradi. Qo'lda joylash uchun: `npm run build`, keyin `dist`
+   papkasini zip qilib Netlify'ga yuklang.
