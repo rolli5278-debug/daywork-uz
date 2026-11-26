@@ -5,7 +5,6 @@ export const COMMISSION_RATE = 0.01;
 export const MAX_ACTIVE_JOBS = 5;
 export const TRUSTED_THRESHOLD = 10;
 export const REFERRAL_BONUS = 5000;
-export const DEMO_SMS_CODE = "1234";
 
 export function ageOn(birth: Date, today = new Date()): number {
   let age = today.getFullYear() - birth.getFullYear();

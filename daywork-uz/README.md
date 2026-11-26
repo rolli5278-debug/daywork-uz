@@ -38,7 +38,6 @@ Birinchi ishga tushishda ikkita admin yaratiladi. Standart parol bilan kirgach, 
 | Bosh administrator | `+998 99 000 00 01` | `Admin2026!` |
 | Moderator | `+998 99 000 00 02` | `Admin2026!` |
 
-SMS kod (demo): `1234`.
 
 ## Xavfsizlik
 
@@ -60,12 +59,30 @@ SMS kod (demo): `1234`.
   o‘chirish va savol havolasini (`/yordam#<id>`) nusxalash mumkin. Murojaat sahifasidagi “FAQ’ga aylantirish” tugmasi
   shu yozishmadan tayyor qoralama ochadi.
 
-## Telegram bot
+## Telegram orqali tasdiqlash kodi (OTP)
 
-Tugma hozir demo oynani ochadi. Haqiqiy botni ulash uchun loyiha ildizida `.env` yarating:
+Ro‘yxatdan o‘tish va "parolni unutdim" bosqichidagi tasdiqlash kodi endi SMS emas, **Telegram bot** orqali keladi. Bu
+haqiqiy backend talab qiladi, shuning uchun bu qism (localStorage'dan farqli o‘laroq) Supabase'da ishlaydi:
 
-```
-VITE_TELEGRAM_BOT=bot_nomi
-```
+- **Jadvallar** (`dayworkuz` Supabase loyihasida): `telegram_links` (telefon ↔ Telegram chat), `otp_codes` (xeshlangan
+  kodlar, muddati, urinishlar soni). Ikkalasida ham RLS yoqilgan va policy yo‘q — ularga faqat quyidagi Edge
+  Function'lar (service role orqali) tega oladi, frontend ularga to‘g‘ridan-to‘g‘ri kira olmaydi.
+- **Edge Function'lar**: `telegram-webhook` (botga kelgan `/start` va "📱 raqamni yuborish" xabarlarini qabul qiladi,
+  telefonni Telegram'ning o‘zi tasdiqlagan chat bilan bog‘laydi va birinchi kodni yuboradi), `send-otp` (allaqachon
+  bog‘langan raqamga yangi kod yuboradi), `verify-otp` (kodni tekshiradi, 5 marta xato kirsa bloklaydi).
+- **Oqim**: foydalanuvchi "Kod yuborish"ni bosadi → agar bu raqam birinchi marta bo‘lsa, Telegram botini ochib
+  o‘z raqamini yuborishi so‘raladi (tugma orqali, qo‘lda yozilmaydi) → kod avtomatik Telegramga keladi → foydalanuvchi
+  kodni ilovaga kiritadi. Keyingi safar (parolni tiklashda) raqam allaqachon bog‘langani uchun kod darhol yuboriladi.
 
-Shunda barcha “Telegram botga o‘tish” tugmalari `https://t.me/bot_nomi` ga olib boradi.
+### Sozlash (bir martalik)
+
+1. Supabase dashboard → `dayworkuz` loyihasi → Edge Functions → Secrets bo‘limida ikkita qiymatni kiriting:
+   - `TELEGRAM_BOT_TOKEN` — BotFather bergan token (`@DayWork_notify_bot`)
+   - `TELEGRAM_WEBHOOK_SECRET` — tasodifiy maxfiy satr (botdan kelgan so‘rovlarni tasdiqlash uchun)
+2. `telegram-webhook` funksiyasining URL'ini `?key=<TELEGRAM_WEBHOOK_SECRET>` bilan bir marta brauzerda oching —
+   shu orqali Telegram'ga "yangilanishlarni shu yerga yubor" deb aytiladi.
+3. Hosting (Netlify): qo'shimcha sozlash shart emas. `netlify.toml` build buyrug'i, `dist` papkasi,
+   `VITE_TELEGRAM_BOT` va SPA yo'naltirishni o'zi belgilaydi. Bot nomi kodda ham standart qiymat sifatida
+   yozilgan (`src/lib/telegram.ts`), shuning uchun "Telegram botga o'tish" tugmalari doim
+   `https://t.me/DayWork_notify_bot` ga olib boradi. Qo'lda joylash uchun: `npm run build`, keyin `dist`
+   papkasini zip qilib Netlify'ga yuklang.
